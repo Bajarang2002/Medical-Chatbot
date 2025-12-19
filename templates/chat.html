@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Chatbot</title>
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet"
+          href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+    <!-- JQuery -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+
+    <!-- External CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<div class="chat-wrapper">
+
+    <!-- Header Section -->
+    <div class="chat-header">
+        <div class="header-content">
+            <img src="https://cdn-icons-png.flaticon.com/512/387/387569.png" class="chat-avatar">
+            <div>
+                <h4>Medical Assistant</h4>
+                <p>Your AI Health Companion</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Body -->
+    <div id="chatBox" class="chat-body"></div>
+
+    <!-- Input Area -->
+    <form id="messageForm" class="chat-input-area">
+        <input id="userInput" type="text" class="chat-input" placeholder="Ask a medical question..." required />
+        <button class="send-btn" type="submit">
+            <img src="https://cdn-icons-png.flaticon.com/512/724/724954.png" class="send-icon">
+        </button>
+    </form>
+
+</div>
+
+<script>
+    function showMessage(message, sender) {
+        if (sender === "user") {
+            $("#chatBox").append(`
+                <div class="chat-message user">
+                    <div class="bubble">${message}</div>
+                </div>
+            `);
+        } else {
+            $("#chatBox").append(`
+                <div class="chat-message bot">
+                    <img src="https://cdn-icons-png.flaticon.com/512/387/387569.png" class="bot-icon">
+                    <div class="bubble">${message}</div>
+                </div>
+            `);
+        }
+        $("#chatBox").scrollTop($("#chatBox")[0].scrollHeight);
+    }
+
+    $("#messageForm").submit(function (event) {
+        event.preventDefault();
+
+        let text = $("#userInput").val();
+        showMessage(text, "user");
+        $("#userInput").val("");
+
+        // Bot is typing indicator
+        $("#chatBox").append(`<div id="typing" class="typing-indicator">Medical Bot is typing...</div>`);
+
+        $.ajax({
+            url: "/chat",
+            type: "POST",
+            data: { msg: text },
+            success: function (response) {
+                $("#typing").remove();
+                showMessage(response, "bot");
+            },
+            error: function () {
+                $("#typing").remove();
+                showMessage("⚠️ Unable to connect to server!", "bot");
+            }
+        });
+    });
+</script>
+
+</body>
+</html>

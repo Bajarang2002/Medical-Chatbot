@@ -1,0 +1,12 @@
+ Virtual Environments
+medenv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.pyc
+
+# ML / Torch
+*.pth
+*.pt

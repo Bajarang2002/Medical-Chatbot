@@ -1,7 +1,7 @@
 
 from src.helper import load_pdf_file, filter_data_to_minimal_docs, split_data, download_embedding_model
 from typing import List
-from langchain.schema import Documents
+
 from dotenv  import load_dotenv
 from pinecone import Pinecone
 from pinecone import ServerlessSpec

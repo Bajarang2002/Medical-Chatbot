@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Medical Chatbot</title>
+    <title>Medical Assistant</title>
 
     <!-- Bootstrap -->
     <link rel="stylesheet"
@@ -20,13 +20,13 @@
 
 <div class="chat-wrapper">
 
-    <!-- Header Section -->
+    <!-- Header -->
     <div class="chat-header">
         <div class="header-content">
             <img src="https://cdn-icons-png.flaticon.com/512/387/387569.png" class="chat-avatar">
             <div>
                 <h4>Medical Assistant</h4>
-                <p>Your AI Health Companion</p>
+                <p>AI Health Companion</p>
             </div>
         </div>
     </div>
@@ -34,59 +34,83 @@
     <!-- Chat Body -->
     <div id="chatBox" class="chat-body"></div>
 
-    <!-- Input Area -->
+    <!-- Input -->
     <form id="messageForm" class="chat-input-area">
-        <input id="userInput" type="text" class="chat-input" placeholder="Ask a medical question..." required />
+        <input id="userInput" type="text" class="chat-input"
+               placeholder="Ask medical question..." required />
         <button class="send-btn" type="submit">
-            <img src="https://cdn-icons-png.flaticon.com/512/724/724954.png" class="send-icon">
+            ➤
         </button>
     </form>
 
 </div>
 
 <script>
-    function showMessage(message, sender) {
-        if (sender === "user") {
-            $("#chatBox").append(`
-                <div class="chat-message user">
-                    <div class="bubble">${message}</div>
-                </div>
-            `);
-        } else {
-            $("#chatBox").append(`
-                <div class="chat-message bot">
-                    <img src="https://cdn-icons-png.flaticon.com/512/387/387569.png" class="bot-icon">
-                    <div class="bubble">${message}</div>
-                </div>
-            `);
-        }
-        $("#chatBox").scrollTop($("#chatBox")[0].scrollHeight);
-    }
+function formatResponse(response) {
+    // Convert structured response into HTML blocks
+    let def = "", sym = "", treat = "";
 
-    $("#messageForm").submit(function (event) {
-        event.preventDefault();
-
-        let text = $("#userInput").val();
-        showMessage(text, "user");
-        $("#userInput").val("");
-
-        // Bot is typing indicator
-        $("#chatBox").append(`<div id="typing" class="typing-indicator">Medical Bot is typing...</div>`);
-
-        $.ajax({
-            url: "/chat",
-            type: "POST",
-            data: { msg: text },
-            success: function (response) {
-                $("#typing").remove();
-                showMessage(response, "bot");
-            },
-            error: function () {
-                $("#typing").remove();
-                showMessage("⚠️ Unable to connect to server!", "bot");
-            }
-        });
+    response.split("\n").forEach(line => {
+        if (line.toLowerCase().includes("definition"))
+            def = line.replace("Definition:", "").trim();
+        if (line.toLowerCase().includes("symptoms"))
+            sym = line.replace("Symptoms:", "").trim();
+        if (line.toLowerCase().includes("treatment"))
+            treat = line.replace("Treatment/Precautions:", "").trim();
     });
+
+    return `
+        <div class="structured-response">
+            ${def ? `<div class="card-section"><h6>Definition</h6><p>${def}</p></div>` : ""}
+            ${sym ? `<div class="card-section"><h6>Symptoms</h6><p>${sym}</p></div>` : ""}
+            ${treat ? `<div class="card-section"><h6>Treatment / Precautions</h6><p>${treat}</p></div>` : ""}
+        </div>
+    `;
+}
+
+function showMessage(message, sender) {
+    if (sender === "user") {
+        $("#chatBox").append(`
+            <div class="chat-message user">
+                <div class="bubble">${message}</div>
+            </div>
+        `);
+    } else {
+        let formatted = formatResponse(message);
+
+        $("#chatBox").append(`
+            <div class="chat-message bot">
+                <img src="https://cdn-icons-png.flaticon.com/512/387/387569.png" class="bot-icon">
+                <div class="bubble">${formatted}</div>
+            </div>
+        `);
+    }
+    $("#chatBox").scrollTop($("#chatBox")[0].scrollHeight);
+}
+
+$("#messageForm").submit(function (event) {
+    event.preventDefault();
+
+    let text = $("#userInput").val();
+    showMessage(text, "user");
+    $("#userInput").val("");
+
+    $("#chatBox").append(`<div id="typing" class="typing">Medical Bot is typing...</div>`);
+
+    $.ajax({
+        url: "/chat",
+        type: "POST",
+        data: { msg: text },
+        success: function (response) {
+            $("#typing").remove();
+            showMessage(response, "bot");
+        },
+        error: function () {
+            $("#typing").remove();
+            showMessage("I don't know", "bot");
+        }
+    });
+});
 </script>
 
 </body>

@@ -1,117 +1,169 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Medical Assistant</title>
 
-    <!-- Bootstrap -->
-    <link rel="stylesheet"
-          href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<meta charset="UTF-8">
 
-    <!-- JQuery -->
-    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- External CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<title>Medical Assistant</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
 </head>
 
 <body>
 
-<div class="chat-wrapper">
+<div class="app-container">
 
-    <!-- Header -->
-    <div class="chat-header">
-        <div class="header-content">
-            <img src="https://cdn-icons-png.flaticon.com/512/387/387569.png" class="chat-avatar">
-            <div>
-                <h4>Medical Assistant</h4>
-                <p>AI Health Companion</p>
-            </div>
-        </div>
-    </div>
+<!-- =====================================================
+SIDEBAR
+===================================================== -->
 
-    <!-- Chat Body -->
-    <div id="chatBox" class="chat-body"></div>
+<div class="sidebar" id="sidebar">
 
-    <!-- Input -->
-    <form id="messageForm" class="chat-input-area">
-        <input id="userInput" type="text" class="chat-input"
-               placeholder="Ask medical question..." required />
-        <button class="send-btn" type="submit">
-            ➤
-        </button>
-    </form>
+<div class="sidebar-header">
+
+<h3>Medical Assistant</h3>
+
+<button id="newChatButton" class="new-chat-btn">
++ New Chat
+</button>
 
 </div>
 
-<script>
-function formatResponse(response) {
-    // Convert structured response into HTML blocks
-    let def = "", sym = "", treat = "";
 
-    response.split("\n").forEach(line => {
-        if (line.toLowerCase().includes("definition"))
-            def = line.replace("Definition:", "").trim();
-        if (line.toLowerCase().includes("symptoms"))
-            sym = line.replace("Symptoms:", "").trim();
-        if (line.toLowerCase().includes("treatment"))
-            treat = line.replace("Treatment/Precautions:", "").trim();
-    });
+<div class="conversation-title">
+Conversations
+</div>
 
-    return `
-        <div class="structured-response">
-            ${def ? `<div class="card-section"><h6>Definition</h6><p>${def}</p></div>` : ""}
-            ${sym ? `<div class="card-section"><h6>Symptoms</h6><p>${sym}</p></div>` : ""}
-            ${treat ? `<div class="card-section"><h6>Treatment / Precautions</h6><p>${treat}</p></div>` : ""}
-        </div>
-    `;
-}
 
-function showMessage(message, sender) {
-    if (sender === "user") {
-        $("#chatBox").append(`
-            <div class="chat-message user">
-                <div class="bubble">${message}</div>
-            </div>
-        `);
-    } else {
-        let formatted = formatResponse(message);
+<div id="conversationList" class="conversation-list">
 
-        $("#chatBox").append(`
-            <div class="chat-message bot">
-                <img src="https://cdn-icons-png.flaticon.com/512/387/387569.png" class="bot-icon">
-                <div class="bubble">${formatted}</div>
-            </div>
-        `);
-    }
-    $("#chatBox").scrollTop($("#chatBox")[0].scrollHeight);
-}
+{% for conversation in conversations %}
 
-$("#messageForm").submit(function (event) {
-    event.preventDefault();
+<div class="conversation-item"
+     data-id="{{ conversation.id }}">
 
-    let text = $("#userInput").val();
-    showMessage(text, "user");
-    $("#userInput").val("");
+<div class="conversation-info">
 
-    $("#chatBox").append(`<div id="typing" class="typing">Medical Bot is typing...</div>`);
+<span class="conversation-name">
+{{ conversation.title }}
+</span>
 
-    $.ajax({
-        url: "/chat",
-        type: "POST",
-        data: { msg: text },
-        success: function (response) {
-            $("#typing").remove();
-            showMessage(response, "bot");
-        },
-        error: function () {
-            $("#typing").remove();
-            showMessage("I don't know", "bot");
-        }
-    });
-});
-</script>
+</div>
+
+<button
+class="delete-btn"
+data-id="{{ conversation.id }}"
+title="Delete conversation">
+
+×
+</button>
+
+</div>
+
+{% endfor %}
+
+</div>
+
+</div>
+
+
+<!-- =====================================================
+MAIN CHAT
+===================================================== -->
+
+<div class="chat-wrapper">
+
+<!-- HEADER -->
+
+<div class="chat-header">
+
+<div class="header-content">
+
+<button
+id="mobileMenuButton"
+class="mobile-menu-btn">
+
+☰
+
+</button>
+
+<img
+src="https://cdn-icons-png.flaticon.com/512/387/387569.png"
+class="chat-avatar"
+alt="Medical Assistant"
+>
+
+<div>
+
+<h4>Medical Assistant</h4>
+
+<p>AI Health Companion</p>
+
+</div>
+
+</div>
+
+</div>
+
+
+<!-- CHAT BODY -->
+
+<div id="chatBox" class="chat-body">
+
+<div class="chat-message bot">
+
+<img
+src="https://cdn-icons-png.flaticon.com/512/387/387569.png"
+class="bot-icon"
+alt="Bot"
+>
+
+<div class="bubble">
+
+Hello! Ask me a medical question.
+
+</div>
+
+</div>
+
+</div>
+
+
+<!-- INPUT -->
+
+<form
+id="messageForm"
+class="chat-input-area">
+
+<input
+type="text"
+id="userInput"
+class="chat-input"
+placeholder="Ask medical question..."
+autocomplete="off"
+required
+>
+
+<button
+type="submit"
+id="sendButton"
+class="send-btn">
+
+➤
+
+</button>
+
+</form>
+
+</div>
+
+</div>
+
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
 
 </body>
 </html>

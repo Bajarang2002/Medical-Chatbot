@@ -1,12 +1,8 @@
-#  Virtual Environments
-medenv/
-venv/
-env/
+.env
+.env.*
+!.env.example
 
-# Python
 __pycache__/
 *.pyc
-
-# ML / Torch
-*.pth
-*.pt
+venv/
+.venv/

@@ -15,7 +15,7 @@ import time
 from datetime import datetime
 
 app=Flask(__name__)
-
+print("FLASK APP CREATED...", flush=True)
 PINECONE_API_KEY=os.getenv("PINECONE_API_KEY")
 GOOGLE_API_KEY=os.getenv("GOOGLE_API_KEY")
 DATABASE_URL=os.getenv("DATABASE_URL")

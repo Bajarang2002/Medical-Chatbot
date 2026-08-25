@@ -1,4 +1,9 @@
-from langchain_community.document_loaders import PyPDFLoader, DirectoryLoader
+import os
+
+from langchain_community.document_loaders import (
+    PyPDFLoader,
+    DirectoryLoader
+)
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from typing import List
@@ -9,21 +14,30 @@ load_dotenv()
 
 
 def load_pdf_file(data):
-    loader = DirectoryLoader(data, glob="*.pdf", loader_cls=PyPDFLoader)
-    docs = loader.load()
-    return docs
+    loader = DirectoryLoader(
+        data,
+        glob="*.pdf",
+        loader_cls=PyPDFLoader
+    )
+
+    return loader.load()
 
 
-def filter_data_to_minimal_docs(docs: List[Document]) -> List[Document]:
-    """Keep only source metadata + content."""
-    minimal_docs: List[Document] = []
+def filter_data_to_minimal_docs(
+    docs: List[Document]
+) -> List[Document]:
+
+    minimal_docs = []
 
     for doc in docs:
-        metadata = doc.metadata.get("source")
+        source = doc.metadata.get("source")
+
         minimal_docs.append(
             Document(
                 page_content=doc.page_content,
-                metadata={"source": metadata}
+                metadata={
+                    "source": source
+                }
             )
         )
 
@@ -31,17 +45,34 @@ def filter_data_to_minimal_docs(docs: List[Document]) -> List[Document]:
 
 
 def split_data(minimal_docs):
+
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=500,
         chunk_overlap=20
     )
 
-    text_chunks = splitter.split_documents(minimal_docs)
-    return text_chunks
+    return splitter.split_documents(
+        minimal_docs
+    )
 
 
 def download_embedding_model():
-    """Load HuggingFace embeddings (latest correct import)."""
+
     model_name = "sentence-transformers/all-MiniLM-L6-v2"
-    embedding = HuggingFaceEmbeddings(model_name=model_name)
+
+    print(
+        "Loading embedding model:",
+        model_name,
+        flush=True
+    )
+
+    embedding = HuggingFaceEmbeddings(
+        model_name=model_name
+    )
+
+    print(
+        "Embedding model loaded successfully.",
+        flush=True
+    )
+
     return embedding

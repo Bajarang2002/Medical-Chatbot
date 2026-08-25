@@ -349,6 +349,7 @@ Do not invent medical facts.
 
 @app.route("/")
 def index():
+    ensure_db()
     conversations=get_conversations()
 
     return render_template(

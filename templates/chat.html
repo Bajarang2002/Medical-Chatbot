@@ -1,169 +1,450 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 
-<meta charset="UTF-8">
+    <meta charset="UTF-8">
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
-<title>Medical Assistant</title>
+    <meta
+        name="description"
+        content="Healthcare AI Assistant for medical information and health education."
+    >
 
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Healthcare AI Assistant</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
 
 </head>
+
 
 <body>
 
 <div class="app-container">
 
-<!-- =====================================================
-SIDEBAR
-===================================================== -->
 
-<div class="sidebar" id="sidebar">
+    <!-- =====================================================
+         SIDEBAR
+    ====================================================== -->
 
-<div class="sidebar-header">
+    <aside
+        class="sidebar"
+        id="sidebar"
+    >
 
-<h3>Medical Assistant</h3>
+        <!-- SIDEBAR HEADER -->
 
-<button id="newChatButton" class="new-chat-btn">
-+ New Chat
-</button>
+        <div class="sidebar-header">
+
+            <div class="brand">
+
+                <div class="brand-icon">
+                    +
+                </div>
+
+                <div class="brand-info">
+
+                    <h2>
+                        Medical Assistant
+                    </h2>
+
+                    <span>
+                        Healthcare AI
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <button
+                type="button"
+                id="newChatButton"
+                class="new-chat-btn"
+            >
+
+                <span class="new-chat-icon">
+                    +
+                </span>
+
+                <span>
+                    New Chat
+                </span>
+
+            </button>
+
+        </div>
+
+
+        <!-- CONVERSATIONS -->
+
+        <div class="conversation-section">
+
+            <div class="section-label">
+                Conversations
+            </div>
+
+
+            <div
+                id="conversationList"
+                class="conversation-list"
+            >
+
+                {% for conversation in conversations %}
+
+                <div
+                    class="conversation-item"
+                    data-id="{{ conversation.id }}"
+                >
+
+                    <div class="conversation-info">
+
+                        <span class="conversation-icon">
+                            💬
+                        </span>
+
+                        <span class="conversation-name">
+                            {{ conversation.title }}
+                        </span>
+
+                    </div>
+
+
+                    <button
+                        type="button"
+                        class="delete-btn"
+                        data-id="{{ conversation.id }}"
+                        title="Delete conversation"
+                        aria-label="Delete conversation"
+                    >
+                        ×
+                    </button>
+
+                </div>
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             EMERGENCY CARD
+        ================================================== -->
+
+        <div class="emergency-card">
+
+            <div class="emergency-header">
+
+                <div class="emergency-icon">
+                    !
+                </div>
+
+                <div>
+                    <h3>
+                        Emergency?
+                    </h3>
+                </div>
+
+            </div>
+
+
+            <p>
+                If you or someone near you is experiencing
+                a medical emergency, seek immediate
+                professional medical help.
+            </p>
+
+
+            <div class="emergency-actions">
+
+                <div class="emergency-action">
+                    <span>•</span>
+                    Call your local emergency number
+                </div>
+
+                <div class="emergency-action">
+                    <span>•</span>
+                    Go to the nearest hospital
+                </div>
+
+                <div class="emergency-action">
+                    <span>•</span>
+                    Do not wait for a chatbot response
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- SIDEBAR FOOTER -->
+
+        <div class="sidebar-footer">
+
+            <div class="privacy-note">
+
+                <span class="privacy-icon">
+                    🔒
+                </span>
+
+                <span>
+                    For educational purposes only
+                </span>
+
+            </div>
+
+        </div>
+
+    </aside>
+
+
+    <!-- =====================================================
+         MAIN CHAT
+    ====================================================== -->
+
+    <main class="chat-wrapper">
+
+
+        <!-- =================================================
+             CHAT HEADER
+        ================================================== -->
+
+        <header class="chat-header">
+
+            <div class="header-content">
+
+
+                <!-- MOBILE MENU -->
+
+                <button
+                    type="button"
+                    id="mobileMenuButton"
+                    class="mobile-menu-btn"
+                    aria-label="Open conversations"
+                >
+                    ☰
+                </button>
+
+
+                <!-- BOT AVATAR -->
+
+                <div class="assistant-avatar">
+
+                    <img
+                        src="https://cdn-icons-png.flaticon.com/512/387/387569.png"
+                        alt="Medical Assistant"
+                    >
+
+                    <span class="online-indicator"></span>
+
+                </div>
+
+
+                <!-- HEADER INFO -->
+
+                <div class="header-info">
+
+                    <h1>
+                        Medical Assistant
+                    </h1>
+
+                    <div class="status">
+
+                        <span class="status-dot"></span>
+
+                        <span>
+                            AI Health Companion
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- SAFETY LABEL -->
+
+            <div class="header-safety">
+
+                <span>
+                    ●
+                </span>
+
+                Educational health information
+
+            </div>
+
+        </header>
+
+
+        <!-- =================================================
+             CHAT BODY
+        ================================================== -->
+
+        <section
+            id="chatBox"
+            class="chat-body"
+            aria-live="polite"
+        >
+
+            <!-- WELCOME MESSAGE -->
+
+            <div class="welcome-container">
+
+                <div class="welcome-avatar">
+
+                    <img
+                        src="https://cdn-icons-png.flaticon.com/512/387/387569.png"
+                        alt="Medical Assistant"
+                    >
+
+                </div>
+
+
+                <h2>
+                    How can I help you today?
+                </h2>
+
+
+                <p>
+                    Ask me about medical conditions, symptoms,
+                    diagnosis information, treatments,
+                    precautions, prevention, or general
+                    health education.
+                </p>
+
+
+                <div class="suggestion-container">
+
+                    <button
+                        type="button"
+                        class="suggestion"
+                        data-question="What are the symptoms of diabetes?"
+                    >
+                        <span>🩺</span>
+                        Symptoms
+                    </button>
+
+
+                    <button
+                        type="button"
+                        class="suggestion"
+                        data-question="What is hypertension?"
+                    >
+                        <span>📖</span>
+                        Medical Information
+                    </button>
+
+
+                    <button
+                        type="button"
+                        class="suggestion"
+                        data-question="How is diabetes diagnosed?"
+                    >
+                        <span>🔬</span>
+                        Diagnosis
+                    </button>
+
+
+                    <button
+                        type="button"
+                        class="suggestion"
+                        data-question="What treatments are available for asthma?"
+                    >
+                        <span>💊</span>
+                        Treatment
+                    </button>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =================================================
+             INPUT AREA
+        ================================================== -->
+
+        <div class="input-container">
+
+            <form
+                id="messageForm"
+                class="chat-input-area"
+            >
+
+                <div class="input-wrapper">
+
+                    <input
+                        type="text"
+                        id="userInput"
+                        class="chat-input"
+                        placeholder="Ask a medical question..."
+                        autocomplete="off"
+                        maxlength="2000"
+                        required
+                    >
+
+
+                    <button
+                        type="submit"
+                        id="sendButton"
+                        class="send-btn"
+                        aria-label="Send message"
+                    >
+
+                        <span class="send-icon">
+                            ➤
+                        </span>
+
+                    </button>
+
+                </div>
+
+            </form>
+
+
+            <div class="input-disclaimer">
+
+                <span>
+                    🔒
+                </span>
+
+                Medical information is for educational
+                purposes and should not replace professional
+                medical advice.
+
+            </div>
+
+        </div>
+
+    </main>
 
 </div>
 
 
-<div class="conversation-title">
-Conversations
-</div>
+<!-- MOBILE OVERLAY -->
+
+<div
+    id="sidebarOverlay"
+    class="sidebar-overlay"
+></div>
 
 
-<div id="conversationList" class="conversation-list">
-
-{% for conversation in conversations %}
-
-<div class="conversation-item"
-     data-id="{{ conversation.id }}">
-
-<div class="conversation-info">
-
-<span class="conversation-name">
-{{ conversation.title }}
-</span>
-
-</div>
-
-<button
-class="delete-btn"
-data-id="{{ conversation.id }}"
-title="Delete conversation">
-
-×
-</button>
-
-</div>
-
-{% endfor %}
-
-</div>
-
-</div>
-
-
-<!-- =====================================================
-MAIN CHAT
-===================================================== -->
-
-<div class="chat-wrapper">
-
-<!-- HEADER -->
-
-<div class="chat-header">
-
-<div class="header-content">
-
-<button
-id="mobileMenuButton"
-class="mobile-menu-btn">
-
-☰
-
-</button>
-
-<img
-src="https://cdn-icons-png.flaticon.com/512/387/387569.png"
-class="chat-avatar"
-alt="Medical Assistant"
->
-
-<div>
-
-<h4>Medical Assistant</h4>
-
-<p>AI Health Companion</p>
-
-</div>
-
-</div>
-
-</div>
-
-
-<!-- CHAT BODY -->
-
-<div id="chatBox" class="chat-body">
-
-<div class="chat-message bot">
-
-<img
-src="https://cdn-icons-png.flaticon.com/512/387/387569.png"
-class="bot-icon"
-alt="Bot"
->
-
-<div class="bubble">
-
-Hello! Ask me a medical question.
-
-</div>
-
-</div>
-
-</div>
-
-
-<!-- INPUT -->
-
-<form
-id="messageForm"
-class="chat-input-area">
-
-<input
-type="text"
-id="userInput"
-class="chat-input"
-placeholder="Ask medical question..."
-autocomplete="off"
-required
->
-
-<button
-type="submit"
-id="sendButton"
-class="send-btn">
-
-➤
-
-</button>
-
-</form>
-
-</div>
-
-</div>
-
-
-<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script
+    src="{{ url_for('static', filename='script.js') }}"
+></script>
 
 </body>
+
 </html>

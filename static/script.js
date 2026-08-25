@@ -1,850 +1,1232 @@
 document.addEventListener("DOMContentLoaded", function () {
 
-const form = document.getElementById("messageForm");
-const input = document.getElementById("userInput");
-const button = document.getElementById("sendButton");
-const chatBox = document.getElementById("chatBox");
-const newChatButton = document.getElementById("newChatButton");
-const conversationList = document.getElementById("conversationList");
-const mobileMenuButton = document.getElementById("mobileMenuButton");
-const sidebar = document.getElementById("sidebar");
+    const form = document.getElementById("messageForm");
+    const input = document.getElementById("userInput");
+    const button = document.getElementById("sendButton");
+    const chatBox = document.getElementById("chatBox");
+    const newChatButton = document.getElementById("newChatButton");
+    const conversationList = document.getElementById("conversationList");
+    const mobileMenuButton = document.getElementById("mobileMenuButton");
+    const sidebar = document.getElementById("sidebar");
+
+    let currentConversationId = null;
+    let isGenerating = false;
+
+
+    /* =====================================================
+       SCROLL TO BOTTOM
+    ===================================================== */
+
+    function scrollBottom() {
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+
+    /* =====================================================
+       ESCAPE HTML
+       Prevents model/user text from injecting HTML.
+    ===================================================== */
+
+    function escapeHtml(text) {
+        const div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+
+    /* =====================================================
+       FORMAT ASSISTANT RESPONSE
+       
+       Supports:
+       - Bold
+       - Headings
+       - Bullet points
+       - Numbered lists
+       - Paragraphs
+       - Line breaks
+       - Inline code
+       
+       Does NOT allow arbitrary HTML from the model.
+    ===================================================== */
+
+    function formatAssistantResponse(text) {
+
+        if (!text) {
+            return "";
+        }
+
+        let html = escapeHtml(text);
+
+        /* -------------------------------------------------
+           Normalize line endings
+        ------------------------------------------------- */
+
+        html = html.replace(/\r\n/g, "\n");
+        html = html.replace(/\r/g, "\n");
+
+
+        /* -------------------------------------------------
+           Markdown headings
+           # Heading
+           ## Heading
+           ### Heading
+        ------------------------------------------------- */
+
+        html = html.replace(
+            /^###\s+(.+)$/gm,
+            '<h4>$1</h4>'
+        );
+
+        html = html.replace(
+            /^##\s+(.+)$/gm,
+            '<h3>$1</h3>'
+        );
+
+        html = html.replace(
+            /^#\s+(.+)$/gm,
+            '<h3>$1</h3>'
+        );
 
-let currentConversationId = null;
-let isGenerating = false;
 
+        /* -------------------------------------------------
+           Bold
+           **text**
+        ------------------------------------------------- */
 
-/* =====================================================
-SCROLL
-===================================================== */
+        html = html.replace(
+            /\*\*(.+?)\*\*/g,
+            "<strong>$1</strong>"
+        );
 
-function scrollBottom() {
 
-chatBox.scrollTop = chatBox.scrollHeight;
+        /* -------------------------------------------------
+           Italic
+           *text*
+        ------------------------------------------------- */
 
-}
+        html = html.replace(
+            /(^|[^\*])\*([^*\n]+)\*(?!\*)/g,
+            "$1<em>$2</em>"
+        );
 
 
-/* =====================================================
-ADD USER MESSAGE
-===================================================== */
+        /* -------------------------------------------------
+           Inline code
+           `text`
+        ------------------------------------------------- */
 
-function addUserMessage(text) {
+        html = html.replace(
+            /`([^`]+)`/g,
+            "<code>$1</code>"
+        );
 
-const messageDiv = document.createElement("div");
 
-messageDiv.className = "chat-message user";
+        /* -------------------------------------------------
+           Bullet lists
+           - item
+           * item
+        ------------------------------------------------- */
 
-const bubble = document.createElement("div");
+        html = html.replace(
+            /(?:^|\n)(?:[-*])\s+(.+)(?=\n|$)/g,
+            '<li>$1</li>'
+        );
 
-bubble.className = "bubble";
+        html = html.replace(
+            /(<li>.*<\/li>)/gs,
+            function (match) {
+                return "<ul>" + match + "</ul>";
+            }
+        );
 
-bubble.textContent = text;
 
-messageDiv.appendChild(bubble);
+        /* -------------------------------------------------
+           Numbered lists
+           1. item
+           2. item
+        ------------------------------------------------- */
 
-chatBox.appendChild(messageDiv);
+        html = html.replace(
+            /(?:^|\n)\d+\.\s+(.+)(?=\n|$)/g,
+            '<li>$1</li>'
+        );
 
-scrollBottom();
 
-}
+        /* -------------------------------------------------
+           Convert remaining line breaks
+        ------------------------------------------------- */
 
+        html = html.replace(
+            /\n{2,}/g,
+            "</p><p>"
+        );
 
-/* =====================================================
-CREATE BOT MESSAGE
-===================================================== */
+        html = html.replace(
+            /\n/g,
+            "<br>"
+        );
 
-function createBotMessage() {
 
-const messageDiv = document.createElement("div");
+        /*
+         * Clean unwanted paragraph wrapping around lists
+         */
 
-messageDiv.className = "chat-message bot";
+        html = html.replace(
+            /<p>\s*(<ul>)/g,
+            "$1"
+        );
 
-const icon = document.createElement("img");
+        html = html.replace(
+            /(<\/ul>)\s*<\/p>/g,
+            "$1"
+        );
 
-icon.src =
-"https://cdn-icons-png.flaticon.com/512/387/387569.png";
 
-icon.className = "bot-icon";
+        return "<p>" + html + "</p>";
+    }
 
-icon.alt = "Medical Assistant";
 
-const bubble = document.createElement("div");
+    /* =====================================================
+       ADD USER MESSAGE
+    ===================================================== */
 
-bubble.className = "bubble";
+    function addUserMessage(text) {
 
-bubble.textContent = "";
+        const messageDiv = document.createElement("div");
 
-messageDiv.appendChild(icon);
+        messageDiv.className = "chat-message user";
 
-messageDiv.appendChild(bubble);
+        const bubble = document.createElement("div");
 
-chatBox.appendChild(messageDiv);
+        bubble.className = "bubble";
 
-scrollBottom();
+        bubble.textContent = text;
 
-return bubble;
+        messageDiv.appendChild(bubble);
 
-}
+        chatBox.appendChild(messageDiv);
 
+        scrollBottom();
+    }
 
-/* =====================================================
-CLEAR CHAT
-===================================================== */
 
-function clearChat() {
+    /* =====================================================
+       CREATE BOT MESSAGE
+    ===================================================== */
 
-chatBox.innerHTML = "";
+    function createBotMessage() {
 
-}
+        const messageDiv = document.createElement("div");
 
+        messageDiv.className = "chat-message bot";
 
-/* =====================================================
-WELCOME MESSAGE
-===================================================== */
+        const icon = document.createElement("img");
 
-function showWelcome() {
+        icon.src =
+            "https://cdn-icons-png.flaticon.com/512/387/387569.png";
 
-const messageDiv = document.createElement("div");
+        icon.className = "bot-icon";
 
-messageDiv.className = "chat-message bot";
+        icon.alt = "Medical Assistant";
 
-const icon = document.createElement("img");
+        const bubble = document.createElement("div");
 
-icon.src =
-"https://cdn-icons-png.flaticon.com/512/387/387569.png";
+        bubble.className = "bubble assistant-response";
 
-icon.className = "bot-icon";
+        bubble.innerHTML = "";
 
-icon.alt = "Bot";
+        messageDiv.appendChild(icon);
 
-const bubble = document.createElement("div");
+        messageDiv.appendChild(bubble);
 
-bubble.className = "bubble";
+        chatBox.appendChild(messageDiv);
 
-bubble.textContent =
-"Hello! Ask me a medical question.";
+        scrollBottom();
 
-messageDiv.appendChild(icon);
+        return bubble;
+    }
 
-messageDiv.appendChild(bubble);
 
-chatBox.appendChild(messageDiv);
+    /* =====================================================
+       CLEAR CHAT
+    ===================================================== */
 
-}
+    function clearChat() {
 
+        chatBox.innerHTML = "";
+    }
 
-/* =====================================================
-LOAD CONVERSATION
-===================================================== */
 
-async function loadConversation(id) {
+    /* =====================================================
+       WELCOME MESSAGE
+    ===================================================== */
 
-try {
+    function showWelcome() {
 
-const response = await fetch(
-"/conversation/" + id
-);
+        const messageDiv = document.createElement("div");
 
-const data = await response.json();
+        messageDiv.className = "chat-message bot";
 
-if (!data.success) {
-return;
-}
+        const icon = document.createElement("img");
 
-currentConversationId = id;
+        icon.src =
+            "https://cdn-icons-png.flaticon.com/512/387/387569.png";
 
-clearChat();
+        icon.className = "bot-icon";
 
-data.messages.forEach(function (message) {
+        icon.alt = "Medical Assistant";
 
-if (message.role === "user") {
+        const bubble = document.createElement("div");
 
-addUserMessage(
-message.content
-);
+        bubble.className = "bubble assistant-response";
 
-}
-else if (message.role === "assistant") {
+        bubble.innerHTML = `
+            <p>
+                Hello! I'm your <strong>Medical Assistant</strong>.
+            </p>
 
-const bubble =
-createBotMessage();
+            <p>
+                You can ask me questions about the medical information
+                available in the provided medical documents.
+            </p>
 
-bubble.textContent =
-message.content;
+            <p class="response-note">
+                Please remember that this assistant provides educational
+                information and does not replace professional medical advice.
+            </p>
+        `;
 
-}
+        messageDiv.appendChild(icon);
+        messageDiv.appendChild(bubble);
 
-});
+        chatBox.appendChild(messageDiv);
 
-document
-.querySelectorAll(".conversation-item")
-.forEach(function (item) {
+        scrollBottom();
+    }
 
-item.classList.remove("active");
 
-});
+    /* =====================================================
+       LOAD CONVERSATION
+    ===================================================== */
 
-const selected =
-document.querySelector(
-`.conversation-item[data-id="${id}"]`
-);
+    async function loadConversation(id) {
 
-if (selected) {
+        try {
 
-selected.classList.add("active");
+            const response =
+                await fetch("/conversation/" + encodeURIComponent(id));
 
-}
+            if (!response.ok) {
+                throw new Error(
+                    "Failed to load conversation."
+                );
+            }
 
-if (window.innerWidth <= 800) {
+            const data = await response.json();
 
-sidebar.classList.remove("open");
+            if (!data.success) {
+                return;
+            }
 
-}
+            currentConversationId = id;
 
-}
-catch (error) {
+            clearChat();
 
-console.error(
-"Conversation loading error:",
-error
-);
+            data.messages.forEach(function (message) {
 
-}
+                if (message.role === "user") {
 
-}
+                    addUserMessage(
+                        message.content
+                    );
 
+                }
 
-/* =====================================================
-ADD CONVERSATION TO SIDEBAR
-===================================================== */
+                else if (message.role === "assistant") {
 
-function addConversationToSidebar(
-id,
-title
-) {
+                    const bubble =
+                        createBotMessage();
 
-const existing =
-document.querySelector(
-`.conversation-item[data-id="${id}"]`
-);
+                    bubble.innerHTML =
+                        formatAssistantResponse(
+                            message.content
+                        );
+                }
 
-if (existing) {
+            });
 
-const name =
-existing.querySelector(
-".conversation-name"
-);
 
-if (name) {
-name.textContent = title;
-}
+            /* -------------------------------------------------
+               Active conversation
+            ------------------------------------------------- */
 
-return;
+            document
+                .querySelectorAll(".conversation-item")
+                .forEach(function (item) {
 
-}
+                    item.classList.remove("active");
 
-const item =
-document.createElement("div");
+                });
 
-item.className =
-"conversation-item";
 
-item.dataset.id = id;
+            const selected =
+                document.querySelector(
+                    `.conversation-item[data-id="${id}"]`
+                );
 
-const info =
-document.createElement("div");
 
-info.className =
-"conversation-info";
+            if (selected) {
 
-const name =
-document.createElement("span");
+                selected.classList.add("active");
 
-name.className =
-"conversation-name";
+            }
 
-name.textContent = title;
 
-info.appendChild(name);
+            /* -------------------------------------------------
+               Close mobile sidebar
+            ------------------------------------------------- */
 
-const deleteButton =
-document.createElement("button");
+            if (window.innerWidth <= 800) {
 
-deleteButton.className =
-"delete-btn";
+                sidebar.classList.remove("open");
 
-deleteButton.dataset.id = id;
+            }
 
-deleteButton.title =
-"Delete conversation";
+            scrollBottom();
 
-deleteButton.textContent = "×";
+        }
 
-item.appendChild(info);
+        catch (error) {
 
-item.appendChild(deleteButton);
+            console.error(
+                "Conversation loading error:",
+                error
+            );
 
-conversationList.prepend(item);
+        }
+    }
 
-}
 
+    /* =====================================================
+       ADD CONVERSATION TO SIDEBAR
+    ===================================================== */
 
-/* =====================================================
-NEW CHAT
-===================================================== */
+    function addConversationToSidebar(id, title) {
 
-async function createNewChat() {
+        const existing =
+            document.querySelector(
+                `.conversation-item[data-id="${id}"]`
+            );
 
-if (isGenerating) {
-return;
-}
 
-try {
+        if (existing) {
 
-const response =
-await fetch(
-"/new_chat",
-{
-method: "POST"
-}
-);
+            const name =
+                existing.querySelector(
+                    ".conversation-name"
+                );
 
-const data =
-await response.json();
+            if (name) {
 
-if (!data.success) {
-return;
-}
+                name.textContent = title;
 
-currentConversationId =
-data.conversation_id;
+            }
 
-clearChat();
+            return;
+        }
 
-showWelcome();
 
-addConversationToSidebar(
-data.conversation_id,
-data.title
-);
+        const item =
+            document.createElement("div");
 
-document
-.querySelectorAll(".conversation-item")
-.forEach(function (item) {
+        item.className =
+            "conversation-item";
 
-item.classList.remove("active");
+        item.dataset.id = id;
 
-});
 
-const newItem =
-document.querySelector(
-`.conversation-item[data-id="${data.conversation_id}"]`
-);
+        const info =
+            document.createElement("div");
 
-if (newItem) {
-newItem.classList.add("active");
-}
+        info.className =
+            "conversation-info";
 
-input.focus();
 
-}
-catch (error) {
+        const name =
+            document.createElement("span");
 
-console.error(
-"New chat error:",
-error
-);
+        name.className =
+            "conversation-name";
 
-}
+        name.textContent = title;
 
-}
 
+        info.appendChild(name);
 
-/* =====================================================
-SEND MESSAGE
-===================================================== */
 
-async function sendMessage() {
+        const deleteButton =
+            document.createElement("button");
 
-if (isGenerating) {
-return;
-}
+        deleteButton.className =
+            "delete-btn";
 
-const message =
-input.value.trim();
+        deleteButton.dataset.id = id;
 
-if (!message) {
-return;
-}
+        deleteButton.title =
+            "Delete conversation";
 
-isGenerating = true;
+        deleteButton.setAttribute(
+            "aria-label",
+            "Delete conversation"
+        );
 
-button.disabled = true;
+        deleteButton.textContent = "×";
 
-input.disabled = true;
 
+        item.appendChild(info);
 
-/* -----------------------------------------------------
-CREATE THREAD IF NEEDED
------------------------------------------------------ */
+        item.appendChild(deleteButton);
 
-if (!currentConversationId) {
 
-try {
+        conversationList.prepend(item);
+    }
 
-const response =
-await fetch(
-"/new_chat",
-{
-method: "POST"
-}
-);
 
-const data =
-await response.json();
+    /* =====================================================
+       CREATE NEW CHAT
+    ===================================================== */
 
-currentConversationId =
-data.conversation_id;
+    async function createNewChat() {
 
-addConversationToSidebar(
-currentConversationId,
-"New Chat"
-);
+        if (isGenerating) {
+            return;
+        }
 
-}
-catch (error) {
 
-console.error(
-"Thread creation error:",
-error
-);
+        try {
 
-isGenerating = false;
+            const response =
+                await fetch(
+                    "/new_chat",
+                    {
+                        method: "POST"
+                    }
+                );
 
-button.disabled = false;
 
-input.disabled = false;
+            if (!response.ok) {
 
-return;
+                throw new Error(
+                    "Unable to create new chat."
+                );
 
-}
+            }
 
-}
 
+            const data =
+                await response.json();
 
-/* -----------------------------------------------------
-DISPLAY USER MESSAGE
------------------------------------------------------ */
 
-addUserMessage(message);
+            if (!data.success) {
+                return;
+            }
 
-input.value = "";
 
+            currentConversationId =
+                data.conversation_id;
 
-/* -----------------------------------------------------
-CREATE BOT BUBBLE
------------------------------------------------------ */
 
-const botBubble =
-createBotMessage();
+            clearChat();
 
+            showWelcome();
 
-try {
 
-const formData =
-new FormData();
+            addConversationToSidebar(
+                data.conversation_id,
+                data.title
+            );
 
-formData.append(
-"msg",
-message
-);
 
-formData.append(
-"conversation_id",
-currentConversationId
-);
+            document
+                .querySelectorAll(".conversation-item")
+                .forEach(function (item) {
 
+                    item.classList.remove("active");
 
-/* -----------------------------------------------------
-SEND TO FLASK
------------------------------------------------------ */
+                });
 
-const response =
-await fetch(
-"/chat",
-{
-method: "POST",
-body: formData
-}
-);
 
-if (!response.ok) {
+            const newItem =
+                document.querySelector(
+                    `.conversation-item[data-id="${data.conversation_id}"]`
+                );
 
-throw new Error(
-"Server error: " +
-response.status
-);
 
-}
+            if (newItem) {
 
-if (!response.body) {
+                newItem.classList.add("active");
 
-throw new Error(
-"Streaming response not available."
-);
+            }
 
-}
 
+            input.focus();
 
-/* -----------------------------------------------------
-STREAM RESPONSE
------------------------------------------------------ */
+        }
 
-const reader =
-response.body.getReader();
+        catch (error) {
 
-const decoder =
-new TextDecoder("utf-8");
+            console.error(
+                "New chat error:",
+                error
+            );
 
-let fullText = "";
+        }
+    }
 
-while (true) {
 
-const result =
-await reader.read();
+    /* =====================================================
+       SEND MESSAGE
+    ===================================================== */
 
-if (result.done) {
-break;
-}
+    async function sendMessage() {
 
-const chunk =
-decoder.decode(
-result.value,
-{
-stream: true
-}
-);
+        if (isGenerating) {
+            return;
+        }
 
-if (chunk) {
 
-fullText += chunk;
+        const message =
+            input.value.trim();
 
-botBubble.textContent =
-fullText;
 
-scrollBottom();
+        if (!message) {
+            return;
+        }
 
-}
 
-}
+        isGenerating = true;
 
+        button.disabled = true;
 
-/* -----------------------------------------------------
-FINAL DECODER
------------------------------------------------------ */
+        input.disabled = true;
 
-const finalChunk =
-decoder.decode();
+        button.classList.add("loading");
 
-if (finalChunk) {
 
-fullText += finalChunk;
+        /* -------------------------------------------------
+           Create conversation if required
+        ------------------------------------------------- */
 
-botBubble.textContent =
-fullText;
+        if (!currentConversationId) {
 
-}
+            try {
 
+                const response =
+                    await fetch(
+                        "/new_chat",
+                        {
+                            method: "POST"
+                        }
+                    );
 
-/* -----------------------------------------------------
-UPDATE SIDEBAR TITLE
------------------------------------------------------
 
-The first question becomes the title.
-*/
+                if (!response.ok) {
 
-const conversationItem =
-document.querySelector(
-`.conversation-item[data-id="${currentConversationId}"]`
-);
+                    throw new Error(
+                        "Unable to create conversation."
+                    );
 
-if (conversationItem) {
+                }
 
-const title =
-conversationItem.querySelector(
-".conversation-name"
-);
 
-if (title &&
-    title.textContent === "New Chat") {
+                const data =
+                    await response.json();
 
-let shortTitle =
-message.replace(/\s+/g, " ").trim();
 
-if (shortTitle.length > 45) {
+                if (!data.success) {
 
-shortTitle =
-shortTitle.substring(0, 45)
-+ "...";
+                    throw new Error(
+                        "Conversation creation failed."
+                    );
 
-}
+                }
 
-title.textContent =
-shortTitle;
 
-}
+                currentConversationId =
+                    data.conversation_id;
 
-}
 
+                addConversationToSidebar(
+                    currentConversationId,
+                    "New Chat"
+                );
 
-/* -----------------------------------------------------
-MOVE CURRENT CHAT TO TOP
------------------------------------------------------ */
+            }
 
-const currentItem =
-document.querySelector(
-`.conversation-item[data-id="${currentConversationId}"]`
-);
+            catch (error) {
 
-if (currentItem) {
+                console.error(
+                    "Thread creation error:",
+                    error
+                );
 
-conversationList.prepend(
-currentItem
-);
+                isGenerating = false;
 
-}
+                button.disabled = false;
 
-}
-catch (error) {
+                input.disabled = false;
 
-console.error(
-"Chat error:",
-error
-);
+                button.classList.remove("loading");
 
-botBubble.textContent =
-"Sorry, something went wrong. Please try again.";
+                return;
+            }
+        }
 
-}
-finally {
 
-isGenerating = false;
+        /* -------------------------------------------------
+           Display user message
+        ------------------------------------------------- */
 
-button.disabled = false;
+        addUserMessage(message);
 
-input.disabled = false;
+        input.value = "";
 
-input.focus();
 
-}
+        /* -------------------------------------------------
+           Create bot response
+        ------------------------------------------------- */
 
-}
+        const botBubble =
+            createBotMessage();
 
 
-/* =====================================================
-FORM SUBMIT
-===================================================== */
+        /* -------------------------------------------------
+           Show temporary typing indicator
+        ------------------------------------------------- */
 
-form.addEventListener(
-"submit",
-function (event) {
+        botBubble.innerHTML = `
+            <div class="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        `;
 
-event.preventDefault();
 
-sendMessage();
+        try {
 
-}
-);
+            const formData =
+                new FormData();
 
 
-/* =====================================================
-ENTER KEY
-===================================================== */
+            formData.append(
+                "msg",
+                message
+            );
 
-input.addEventListener(
-"keydown",
-function (event) {
 
-if (
-event.key === "Enter" &&
-!event.shiftKey
-) {
+            formData.append(
+                "conversation_id",
+                currentConversationId
+            );
 
-event.preventDefault();
 
-sendMessage();
+            /* -------------------------------------------------
+               Send request to Flask
+            ------------------------------------------------- */
 
-}
+            const response =
+                await fetch(
+                    "/chat",
+                    {
+                        method: "POST",
+                        body: formData
+                    }
+                );
 
-}
-);
 
+            if (!response.ok) {
 
-/* =====================================================
-NEW CHAT BUTTON
-===================================================== */
+                throw new Error(
+                    "Server error: " +
+                    response.status
+                );
 
-newChatButton.addEventListener(
-"click",
-function () {
+            }
 
-createNewChat();
 
-}
-);
+            if (!response.body) {
 
+                throw new Error(
+                    "Streaming response is not available."
+                );
 
-/* =====================================================
-CONVERSATION CLICK
-===================================================== */
+            }
 
-conversationList.addEventListener(
-"click",
-function (event) {
 
-const deleteButton =
-event.target.closest(
-".delete-btn"
-);
+            /* -------------------------------------------------
+               Read streaming response
+            ------------------------------------------------- */
 
-if (deleteButton) {
+            const reader =
+                response.body.getReader();
 
-event.stopPropagation();
 
-deleteConversation(
-deleteButton.dataset.id
-);
+            const decoder =
+                new TextDecoder("utf-8");
 
-return;
 
-}
+            let fullText = "";
 
-const item =
-event.target.closest(
-".conversation-item"
-);
 
-if (item) {
+            botBubble.innerHTML = "";
 
-loadConversation(
-item.dataset.id
-);
 
-}
+            while (true) {
 
-}
-);
+                const result =
+                    await reader.read();
 
 
-/* =====================================================
-DELETE CONVERSATION
-===================================================== */
+                if (result.done) {
+                    break;
+                }
 
-async function deleteConversation(id) {
 
-if (
-!confirm(
-"Delete this conversation?"
-)
-) {
+                const chunk =
+                    decoder.decode(
+                        result.value,
+                        {
+                            stream: true
+                        }
+                    );
 
-return;
 
-}
+                if (chunk) {
 
-try {
+                    fullText += chunk;
 
-const response =
-await fetch(
-"/conversation/" + id,
-{
-method: "DELETE"
-}
-);
 
-const data =
-await response.json();
+                    /*
+                     * Render Markdown-like formatting
+                     * while streaming.
+                     */
 
-if (!data.success) {
-return;
-}
+                    botBubble.innerHTML =
+                        formatAssistantResponse(
+                            fullText
+                        );
 
-const item =
-document.querySelector(
-`.conversation-item[data-id="${id}"]`
-);
 
-if (item) {
-item.remove();
-}
+                    scrollBottom();
+                }
+            }
 
 
-/* -----------------------------------------------------
-If current conversation deleted
------------------------------------------------------ */
+            /* -------------------------------------------------
+               Flush decoder
+            ------------------------------------------------- */
 
-if (
-currentConversationId === id
-) {
+            const finalChunk =
+                decoder.decode();
 
-currentConversationId =
-null;
 
-clearChat();
+            if (finalChunk) {
 
-showWelcome();
+                fullText += finalChunk;
 
-}
+            }
 
-}
-catch (error) {
 
-console.error(
-"Delete error:",
-error
-);
+            botBubble.innerHTML =
+                formatAssistantResponse(
+                    fullText
+                );
 
-}
 
-}
+            scrollBottom();
 
 
-/* =====================================================
-MOBILE SIDEBAR
-===================================================== */
+            /* -------------------------------------------------
+               Update conversation title
+            ------------------------------------------------- */
 
-mobileMenuButton.addEventListener(
-"click",
-function () {
+            const conversationItem =
+                document.querySelector(
+                    `.conversation-item[data-id="${currentConversationId}"]`
+                );
 
-sidebar.classList.toggle(
-"open"
-);
 
-}
-);
+            if (conversationItem) {
 
+                const title =
+                    conversationItem.querySelector(
+                        ".conversation-name"
+                    );
 
-/* =====================================================
-LOAD FIRST CONVERSATION
-===================================================== */
 
-const firstConversation =
-document.querySelector(
-".conversation-item"
-);
+                if (
+                    title &&
+                    title.textContent === "New Chat"
+                ) {
 
-if (firstConversation) {
+                    let shortTitle =
+                        message
+                            .replace(/\s+/g, " ")
+                            .trim();
 
-loadConversation(
-firstConversation.dataset.id
-);
 
-}
-else {
+                    if (shortTitle.length > 45) {
 
-showWelcome();
+                        shortTitle =
+                            shortTitle
+                                .substring(0, 45)
+                                .trim() + "...";
 
-}
+                    }
+
+
+                    title.textContent =
+                        shortTitle;
+                }
+            }
+
+
+            /* -------------------------------------------------
+               Move current conversation to top
+            ------------------------------------------------- */
+
+            const currentItem =
+                document.querySelector(
+                    `.conversation-item[data-id="${currentConversationId}"]`
+                );
+
+
+            if (currentItem) {
+
+                conversationList.prepend(
+                    currentItem
+                );
+            }
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Chat error:",
+                error
+            );
+
+
+            botBubble.innerHTML = `
+                <div class="error-message">
+                    <strong>Unable to generate a response.</strong>
+                    <p>
+                        Please check your connection and try again.
+                    </p>
+                </div>
+            `;
+        }
+
+        finally {
+
+            isGenerating = false;
+
+            button.disabled = false;
+
+            input.disabled = false;
+
+            button.classList.remove("loading");
+
+            input.focus();
+
+            scrollBottom();
+        }
+    }
+
+
+    /* =====================================================
+       FORM SUBMIT
+    ===================================================== */
+
+    form.addEventListener(
+        "submit",
+        function (event) {
+
+            event.preventDefault();
+
+            sendMessage();
+
+        }
+    );
+
+
+    /* =====================================================
+       ENTER KEY
+    ===================================================== */
+
+    input.addEventListener(
+        "keydown",
+        function (event) {
+
+            if (
+                event.key === "Enter" &&
+                !event.shiftKey
+            ) {
+
+                event.preventDefault();
+
+                sendMessage();
+
+            }
+
+        }
+    );
+
+
+    /* =====================================================
+       NEW CHAT BUTTON
+    ===================================================== */
+
+    if (newChatButton) {
+
+        newChatButton.addEventListener(
+            "click",
+            function () {
+
+                createNewChat();
+
+            }
+        );
+    }
+
+
+    /* =====================================================
+       CONVERSATION LIST
+    ===================================================== */
+
+    if (conversationList) {
+
+        conversationList.addEventListener(
+            "click",
+            function (event) {
+
+                /* -------------------------------------------------
+                   Delete button
+                ------------------------------------------------- */
+
+                const deleteButton =
+                    event.target.closest(
+                        ".delete-btn"
+                    );
+
+
+                if (deleteButton) {
+
+                    event.stopPropagation();
+
+                    deleteConversation(
+                        deleteButton.dataset.id
+                    );
+
+                    return;
+                }
+
+
+                /* -------------------------------------------------
+                   Conversation item
+                ------------------------------------------------- */
+
+                const item =
+                    event.target.closest(
+                        ".conversation-item"
+                    );
+
+
+                if (item) {
+
+                    loadConversation(
+                        item.dataset.id
+                    );
+
+                }
+
+            }
+        );
+    }
+
+
+    /* =====================================================
+       DELETE CONVERSATION
+    ===================================================== */
+
+    async function deleteConversation(id) {
+
+        const confirmed =
+            confirm(
+                "Are you sure you want to delete this conversation?"
+            );
+
+
+        if (!confirmed) {
+            return;
+        }
+
+
+        try {
+
+            const response =
+                await fetch(
+                    "/conversation/" +
+                    encodeURIComponent(id),
+                    {
+                        method: "DELETE"
+                    }
+                );
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    "Delete request failed."
+                );
+
+            }
+
+
+            const data =
+                await response.json();
+
+
+            if (!data.success) {
+                return;
+            }
+
+
+            const item =
+                document.querySelector(
+                    `.conversation-item[data-id="${id}"]`
+                );
+
+
+            if (item) {
+
+                item.remove();
+
+            }
+
+
+            /* -------------------------------------------------
+               If active conversation deleted
+            ------------------------------------------------- */
+
+            if (
+                currentConversationId === id
+            ) {
+
+                currentConversationId = null;
+
+                clearChat();
+
+                showWelcome();
+
+            }
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Delete error:",
+                error
+            );
+
+        }
+    }
+
+
+    /* =====================================================
+       MOBILE SIDEBAR
+    ===================================================== */
+
+    if (mobileMenuButton) {
+
+        mobileMenuButton.addEventListener(
+            "click",
+            function () {
+
+                sidebar.classList.toggle(
+                    "open"
+                );
+
+            }
+        );
+    }
+
+
+    /* =====================================================
+       CLOSE SIDEBAR WHEN CLICKING OUTSIDE
+       Mobile only
+    ===================================================== */
+
+    document.addEventListener(
+        "click",
+        function (event) {
+
+            if (
+                window.innerWidth <= 800 &&
+                sidebar.classList.contains("open")
+            ) {
+
+                const clickedInsideSidebar =
+                    sidebar.contains(event.target);
+
+                const clickedMenuButton =
+                    mobileMenuButton &&
+                    mobileMenuButton.contains(
+                        event.target
+                    );
+
+
+                if (
+                    !clickedInsideSidebar &&
+                    !clickedMenuButton
+                ) {
+
+                    sidebar.classList.remove(
+                        "open"
+                    );
+
+                }
+            }
+
+        }
+    );
+
+
+    /* =====================================================
+       INITIALIZE CHAT
+    ===================================================== */
+
+    const firstConversation =
+        document.querySelector(
+            ".conversation-item"
+        );
+
+
+    if (firstConversation) {
+
+        loadConversation(
+            firstConversation.dataset.id
+        );
+
+    }
+
+    else {
+
+        showWelcome();
+
+    }
 
 });

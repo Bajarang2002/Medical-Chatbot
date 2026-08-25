@@ -70,37 +70,66 @@ def init_db():
     cur.close()
     conn.close()
 
-
-init_db()
-
-
-print("Loading embeddings...")
-embeddings=download_embedding_model()
-print("Embeddings loaded.")
+_db_initialized = False
 
 
-index_name="medical-chatbot"
+def ensure_db():
+    global _db_initialized
 
-docsearch=PineconeVectorStore.from_existing_index(
-    embedding=embeddings,
-    index_name=index_name
-)
+    if not _db_initialized:
+        init_db()
+        _db_initialized = True
 
-print("Pinecone connected.")
+ensure_db()
+# --------------------------------------------------
+# Lazy initialization
+# --------------------------------------------------
+
+_embeddings = None
+_retriever = None
+_model = None
 
 
-retriever=docsearch.as_retriever(
-    search_type="similarity",
-    search_kwargs={"k":3}
-)
+def get_retriever():
+    global _embeddings, _retriever
+
+    if _retriever is None:
+        print("Loading embeddings...")
+
+        _embeddings = download_embedding_model()
+
+        print("Embeddings loaded.")
+
+        docsearch = PineconeVectorStore.from_existing_index(
+            embedding=_embeddings,
+            index_name="medical-chatbot"
+        )
+
+        print("Pinecone connected.")
+
+        _retriever = docsearch.as_retriever(
+            search_type="similarity",
+            search_kwargs={"k": 3}
+        )
+
+    return _retriever
 
 
-model=ChatGoogleGenerativeAI(
-    model="gemini-3.1-flash-lite",
-    google_api_key=GOOGLE_API_KEY,
-    temperature=0
-)
+def get_model():
+    global _model
 
+    if _model is None:
+        print("Loading Gemini model...")
+
+        _model = ChatGoogleGenerativeAI(
+            model="gemini-3.1-flash-lite",
+            google_api_key=GOOGLE_API_KEY,
+            temperature=0
+        )
+
+        print("Gemini model loaded.")
+
+    return _model
 
 def create_title(text):
     text=text.strip()
@@ -459,7 +488,8 @@ def chat():
         history_text="No previous conversation."
 
     print("\nSearching Pinecone...")
-
+    
+    retriever = get_retriever()
     try:
         docs=retriever.invoke(
             user_msg
@@ -501,29 +531,28 @@ def chat():
 
 
     def generate():
-        full_response=""
+        full_response = ""
 
         try:
-            chain=(
+            llm = get_model()
+
+            chain = (
                 {
-                    "context":lambda x:context,
-                    "input":RunnablePassthrough(),
-                    "history":lambda x:history_text
+                    "context": lambda x: context,
+                    "input": RunnablePassthrough(),
+                    "history": lambda x: history_text
                 }
-                |rag_prompt
-                |model
-                |StrOutputParser()
+                | rag_prompt
+                | llm
+                | StrOutputParser()
             )
 
-            print(
-                "\nGenerating response..."
-            )
+            print("\nGenerating response...")
 
-            for chunk in chain.stream(
-                user_msg
-            ):
+            for chunk in chain.stream(user_msg):
+
                 if chunk:
-                    full_response+=chunk
+                    full_response += chunk
 
                     print(
                         chunk,
@@ -546,18 +575,18 @@ def chat():
             )
 
         except Exception as e:
+
             print(
                 "\nERROR:",
                 str(e)
             )
 
-            error_message=(
+            error_message = (
                 "Sorry, an error occurred: "
-                +str(e)
+                + str(e)
             )
 
             yield error_message
-
 
     return Response(
         generate(),

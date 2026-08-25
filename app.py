@@ -403,6 +403,7 @@ def delete_chat(conversation_id):
 
 @app.route("/chat",methods=["POST"])
 def chat():
+    ensure_db()
     user_msg=request.form.get(
         "msg",
         ""

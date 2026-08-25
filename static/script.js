@@ -291,8 +291,8 @@ document.addEventListener("DOMContentLoaded", function () {
             </p>
 
             <p class="response-note">
-                Please remember that this assistant provides educational
-                information and does not replace professional medical advice.
+             Please remember that this assistant provides educational
+            information and does not replace professional medical advice.
             </p>
         `;
 

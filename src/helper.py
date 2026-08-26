@@ -1,11 +1,8 @@
 import os
-
-from langchain_community.document_loaders import (
-    PyPDFLoader,
-    DirectoryLoader
-)
+from langchain_community.document_loaders import (PyPDFLoader,DirectoryLoader)
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
+from functools import lru_cache
 from typing import List
 from langchain_core.documents import Document
 from dotenv import load_dotenv
@@ -56,23 +53,20 @@ def split_data(minimal_docs):
     )
 
 
+@lru_cache(maxsize=1)
 def download_embedding_model():
-
-    model_name = "sentence-transformers/all-MiniLM-L6-v2"
-
-    print(
-        "Loading embedding model:",
-        model_name,
-        flush=True
-    )
+    print("Loading embedding model: sentence-transformers/all-MiniLM-L6-v2")
 
     embedding = HuggingFaceEmbeddings(
-        model_name=model_name
+        model_name="sentence-transformers/all-MiniLM-L6-v2",
+        model_kwargs={
+            "device": "cpu"
+        },
+        encode_kwargs={
+            "normalize_embeddings": True
+        }
     )
 
-    print(
-        "Embedding model loaded successfully.",
-        flush=True
-    )
+    print("Embedding model loaded successfully.")
 
     return embedding

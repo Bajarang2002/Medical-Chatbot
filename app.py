@@ -6,6 +6,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 from src.prompts import system_prompt
+from functools import lru_cache
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
@@ -85,34 +86,40 @@ ensure_db()
 # Lazy initialization
 # --------------------------------------------------
 
-_embeddings = None
-_retriever = None
+
 _model = None
 
 
+@lru_cache(maxsize=1)
 def get_retriever():
-    global _embeddings, _retriever
 
-    if _retriever is None:
-        print("Loading embeddings...")
+    print("================================")
+    print("Initializing Pinecone retriever")
+    print("================================")
 
-        _embeddings = download_embedding_model()
+    print("Loading embeddings...")
 
-        print("Embeddings loaded.")
+    embeddings = download_embedding_model()
 
-        docsearch = PineconeVectorStore.from_existing_index(
-            embedding=_embeddings,
-            index_name="medical-chatbot"
-        )
+    print("Embeddings loaded.")
 
-        print("Pinecone connected.")
+    docsearch = PineconeVectorStore.from_existing_index(
+        index_name="medical-chatbot",
+        embedding=embeddings
+    )
 
-        _retriever = docsearch.as_retriever(
-            search_type="similarity",
-            search_kwargs={"k": 3}
-        )
+    print("Pinecone connected.")
 
-    return _retriever
+    retriever = docsearch.as_retriever(
+        search_type="similarity",
+        search_kwargs={
+            "k": 3
+        }
+    )
+
+    print("Retriever ready.")
+
+    return retriever
 
 
 def get_model():
@@ -602,7 +609,7 @@ def chat():
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
+    port = int(os.environ.get("PORT", 8000))
 
     app.run(
         host="0.0.0.0",

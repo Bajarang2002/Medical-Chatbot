@@ -58,15 +58,8 @@ def download_embedding_model():
     print("Loading embedding model: sentence-transformers/all-MiniLM-L6-v2")
 
     embedding = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2",
-        model_kwargs={
-            "device": "cpu"
-        },
-        encode_kwargs={
-            "normalize_embeddings": True
-        }
-    )
-
+    model_name="sentence-transformers/all-MiniLM-L6-v2"
+)
     print("Embedding model loaded successfully.")
 
     return embedding

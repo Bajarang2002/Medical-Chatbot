@@ -2,6 +2,8 @@ import os
 from langchain_community.document_loaders import (PyPDFLoader,DirectoryLoader)
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
+import os
+from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 from functools import lru_cache
 from typing import List
 from langchain_core.documents import Document
@@ -57,9 +59,10 @@ def split_data(minimal_docs):
 def download_embedding_model():
     print("Loading embedding model: sentence-transformers/all-MiniLM-L6-v2")
 
-    embedding = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
-)
-    print("Embedding model loaded successfully.")
+
+    embedding = HuggingFaceInferenceAPIEmbeddings(
+        api_key=os.environ["HUGGINGFACEHUB_API_TOKEN"],
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
+    )
 
     return embedding

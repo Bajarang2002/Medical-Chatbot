@@ -55,14 +55,27 @@ def split_data(minimal_docs):
     )
 
 
+# @lru_cache(maxsize=1)
+# def download_embedding_model():
+#     print("Loading embedding model: sentence-transformers/all-MiniLM-L6-v2")
+
+
+#     embedding = HuggingFaceInferenceAPIEmbeddings(
+#         api_key=os.environ["HUGGINGFACEHUB_API_TOKEN"],
+#         model_name="sentence-transformers/all-MiniLM-L6-v2"
+#     )
+
+#     return embedding
+
 @lru_cache(maxsize=1)
 def download_embedding_model():
-    print("Loading embedding model: sentence-transformers/all-MiniLM-L6-v2")
+    print("Loading local embedding model: sentence-transformers/all-MiniLM-L6-v2")
 
-
-    embedding = HuggingFaceInferenceAPIEmbeddings(
-        api_key=os.environ["HUGGINGFACEHUB_API_TOKEN"],
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
+    embedding = HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2",
+        model_kwargs={"device": "cpu"},
+        encode_kwargs={"normalize_embeddings": False},
     )
 
+    print("Local embedding model loaded successfully.")
     return embedding

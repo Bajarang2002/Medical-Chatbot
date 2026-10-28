@@ -9,3 +9,5 @@ langchain-pinecone
 langchain-huggingface
 pinecone
 psycopg2-binary
+langchain-huggingface
+sentence-transformers

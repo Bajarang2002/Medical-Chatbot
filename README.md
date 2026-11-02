@@ -1,6 +1,14 @@
-# Build-a-Complete-Medical-Chatbot-with-LLMs-LangChain-Pinecone-Flask-AWS
+# Build-a-Complete-Medical-Chatbot-with-LLMs-LangChain-Pinecone-Flask-PostgreSQL
+
+## 🚀 Live Demo
+
+**Deployed Application:**  
+https://medical-chatbot-11-iqwl.onrender.com/
+
+---
 
 # How to run?
+
 ### STEPS:
 
 Clone the repository
@@ -8,123 +16,294 @@ Clone the repository
 ```bash
 git clone https://github.com/Bajarang2002/Medical-Chatbot.git
 ```
+
 ### STEP 01- Create a conda environment after opening the repository
 
 ```bash
 conda create -n medibot python=3.10 -y
 ```
 
+Activate the environment
+
 ```bash
 conda activate medibot
 ```
 
+### STEP 02- Install the requirements
 
-### STEP 02- install the requirements
 ```bash
 pip install -r requirements.txt
 ```
 
+### STEP 03- Create a `.env` file in the root directory
 
-### Create a `.env` file in the root directory and add your Pinecone & openai credentials as follows:
+Add the following environment variables:
 
-```ini
-PINECONE_API_KEY = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-OPENAI_API_KEY = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```env
+PINECONE_API_KEY=your_pinecone_api_key
+GOOGLE_API_KEY=your_google_api_key
+DATABASE_URL=your_postgresql_database_url
 ```
 
+### STEP 04- Run the application
 
 ```bash
-# run the following command to store embeddings to pinecone
-python store_index.py
-```
-
-```bash
-# Finally run the following command
 python app.py
 ```
 
-Now,
-```bash
-open up localhost:
+Open your browser and visit:
+
+```text
+http://127.0.0.1:8000
 ```
 
+---
 
-### Techstack Used:
+# 🏗️ Project Architecture
+
+```text
+User Question
+      │
+      ▼
+Flask Application
+      │
+      ▼
+Conversation History
+      │
+      ▼
+PostgreSQL Database
+      │
+      ▼
+Embedding Model
+sentence-transformers/all-MiniLM-L6-v2
+      │
+      ▼
+Pinecone Vector Database
+      │
+      ▼
+Relevant Medical Documents
+      │
+      ▼
+LangChain RAG Pipeline
+      │
+      ▼
+Google Gemini
+      │
+      ▼
+AI Generated Response
+      │
+      ▼
+User
+```
+
+---
+
+# 🛠️ Tech Stack Used
 
 - Python
-- LangChain
 - Flask
-- GPT
+- LangChain
+- Google Gemini
 - Pinecone
+- Sentence Transformers
+- PostgreSQL
+- Psycopg2
+- Retrieval-Augmented Generation (RAG)
+- Render
 
+---
 
+# ✨ Features
 
-# AWS-CICD-Deployment-with-Github-Actions
+- AI-powered Medical Chatbot
+- Retrieval-Augmented Generation (RAG)
+- Medical document retrieval using Pinecone
+- Google Gemini integration
+- Conversation history management
+- PostgreSQL database integration
+- Create multiple conversations
+- Automatic conversation title generation
+- Delete conversations
+- Streaming AI responses
+- Secure environment variable management
 
-## 1. Login to AWS console.
+---
 
-## 2. Create IAM user for deployment
+# 📂 Project Structure
 
-	#with specific access
+```text
+Medical-Chatbot/
+│
+├── src/
+│   ├── helper.py
+│   └── prompts.py
+│
+├── templates/
+│   └── chat.html
+│
+├── app.py
+├── requirements.txt
+├── .gitignore
+└── README.md
+```
 
-	1. EC2 access : It is virtual machine
+---
 
-	2. ECR: Elastic Container registry to save your docker image in aws
+# 🧠 How It Works
 
+### STEP 01- User asks a medical question
 
-	#Description: About the deployment
+The user enters a question through the Medical Chatbot interface.
 
-	1. Build docker image of the source code
+### STEP 02- Conversation history is retrieved
 
-	2. Push your docker image to ECR
+Previous conversation messages are stored and retrieved from the PostgreSQL database.
 
-	3. Launch Your EC2 
+### STEP 03- Search relevant medical information
 
-	4. Pull Your image from ECR in EC2
+The user's question is converted into embeddings using:
 
-	5. Lauch your docker image in EC2
+```text
+sentence-transformers/all-MiniLM-L6-v2
+```
 
-	#Policy:
+The application searches the Pinecone Vector Database for relevant medical documents.
 
-	1. AmazonEC2ContainerRegistryFullAccess
+### STEP 04- Create RAG context
 
-	2. AmazonEC2FullAccess
+The retrieved medical documents, conversation history, and current user question are combined into a prompt.
 
-	
-## 3. Create ECR repo to store/save docker image
-    - Save the URI: 315865595366.dkr.ecr.us-east-1.amazonaws.com/medicalbot
+### STEP 05- Generate AI response
 
-	
-## 4. Create EC2 machine (Ubuntu) 
+The prompt is sent to Google Gemini through LangChain.
 
-## 5. Open EC2 and Install docker in EC2 Machine:
-	
-	
-	#optinal
+### STEP 06- Stream and save the response
 
-	sudo apt-get update -y
+The generated AI response is streamed back to the user and saved in the PostgreSQL database.
 
-	sudo apt-get upgrade
-	
-	#required
+---
 
-	curl -fsSL https://get.docker.com -o get-docker.sh
+# 🔗 API Endpoints
 
-	sudo sh get-docker.sh
+### Home Page
 
-	sudo usermod -aG docker ubuntu
+```http
+GET /
+```
 
-	newgrp docker
-	
-# 6. Configure EC2 as self-hosted runner:
-    setting>actions>runner>new self hosted runner> choose os> then run command one by one
+### Create New Chat
 
+```http
+POST /new_chat
+```
 
-# 7. Setup github secrets:
+### Get All Conversations
 
-   - AWS_ACCESS_KEY_ID
-   - AWS_SECRET_ACCESS_KEY
-   - AWS_DEFAULT_REGION
-   - ECR_REPO
-   - PINECONE_API_KEY
-   - OPENAI_API_KEY
+```http
+GET /conversations
+```
+
+### Get Conversation Messages
+
+```http
+GET /conversation/<conversation_id>
+```
+
+### Delete Conversation
+
+```http
+DELETE /conversation/<conversation_id>
+```
+
+### Chat with AI
+
+```http
+POST /chat
+```
+
+Request parameters:
+
+```text
+msg
+conversation_id
+```
+
+---
+
+# 🗄️ Database Structure
+
+### Conversations Table
+
+```text
+conversations
+├── id
+├── title
+├── created_at
+└── updated_at
+```
+
+### Messages Table
+
+```text
+messages
+├── id
+├── conversation_id
+├── role
+├── content
+└── created_at
+```
+
+---
+
+# 🌐 Deployment
+
+The application is deployed on **Render**.
+
+## Live Application
+
+https://medical-chatbot-11-iqwl.onrender.com/
+
+Make sure the following environment variables are configured:
+
+```text
+PINECONE_API_KEY
+GOOGLE_API_KEY
+DATABASE_URL
+```
+
+---
+
+# 🔒 Important
+
+Do not upload your `.env` file to GitHub.
+
+Add the following to `.gitignore`:
+
+```text
+.env
+venv/
+__pycache__/
+*.pyc
+```
+
+---
+
+# ⚠️ Medical Disclaimer
+
+This Medical Chatbot is designed for **educational and informational purposes only**.
+
+It should not be considered a replacement for professional medical advice, diagnosis, or treatment. Always consult a qualified healthcare professional for medical concerns.
+
+---
+
+# 👨‍💻 Author
+
+**Bajarang Dhamanekar**
+
+AI/ML Engineer | Generative AI Enthusiast
+
+---
+
+# ⭐ Support
+
+If you like this project, please give it a **Star ⭐** on GitHub!
